@@ -25,7 +25,7 @@ class Listing(db.Model):
 
     user_id = db.Column(
         db.Integer,
-        db.ForeignKey('users.id', ondelete="cascade")
+        db.ForeignKey('users.id', ondelete="cascade"),
         nullable=False
     )
 
@@ -105,12 +105,12 @@ class User(db.Model):
         nullable=False,
     )
 
-    firstName = db.Column(
+    first_name = db.Column(
         db.Text,
         nullable=False,
     )
 
-    lastName = db.Column(
+    last_name = db.Column(
         db.Text,
         nullable=False,
     )
