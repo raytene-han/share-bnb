@@ -15,7 +15,7 @@ from models import db, User
 # before we import our app, since that will have already
 # connected to the database
 
-os.environ['DATABASE_URL'] = "postgresql:///sharebnb_test"
+os.environ['DATABASE_URL'] = "postgresql:///warbler_test"
 
 # Now we can import app
 
@@ -32,8 +32,8 @@ class UserModelTestCase(TestCase):
     def setUp(self):
         User.query.delete()
 
-        u1 = User.signup("u1", "u1@email.com", "password", "userFirst1","userLast1" )
-        u2 = User.signup("u2", "u2@email.com", "password", "userFirst2","userLast2" )
+        u1 = User.signup("u1", "u1@email.com", "password", None)
+        u2 = User.signup("u2", "u2@email.com", "password", None)
 
         db.session.commit()
         self.u1_id = u1.id
@@ -46,6 +46,44 @@ class UserModelTestCase(TestCase):
 
     def test_user_model(self):
         u1 = User.query.get(self.u1_id)
+
+        # User should have no messages & no followers
+        self.assertEqual(len(u1.messages), 0)
+        self.assertEqual(len(u1.followers), 0)
+
+    # #################### Following tests
+
+    def test_user_follows(self):
+        u1 = User.query.get(self.u1_id)
+        u2 = User.query.get(self.u2_id)
+
+        u1.following.append(u2)
+        db.session.commit()
+
+        self.assertEqual(u2.following, [])
+        self.assertEqual(u2.followers, [u1])
+        self.assertEqual(u1.followers, [])
+        self.assertEqual(u1.following, [u2])
+
+    def test_is_following(self):
+        u1 = User.query.get(self.u1_id)
+        u2 = User.query.get(self.u2_id)
+
+        u1.following.append(u2)
+        db.session.commit()
+
+        self.assertTrue(u1.is_following(u2))
+        self.assertFalse(u2.is_following(u1))
+
+    def test_is_followed_by(self):
+        u1 = User.query.get(self.u1_id)
+        u2 = User.query.get(self.u2_id)
+
+        u1.following.append(u2)
+        db.session.commit()
+
+        self.assertTrue(u2.is_followed_by(u1))
+        self.assertFalse(u1.is_followed_by(u2))
 
     # #################### Signup Tests
 

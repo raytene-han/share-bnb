@@ -151,8 +151,8 @@ class User(db.Model):
             username=username,
             email=email,
             password=hashed_pwd,
-            firstName=firstName,
-            lastName=lastName
+            first_name=firstName,
+            last_name=lastName
         )
 
         db.session.add(user)
@@ -178,6 +178,17 @@ class User(db.Model):
                 return user
 
         return False
+    
+    def serialize(self):
+        """Serialize user to a dict of user info."""
+
+        return {
+            "id": self.id,
+            "username": self.flavor,
+            "email": self.rating,
+            "first_name": self.size,
+            "last_name": self.image,
+        }
 
     # def is_followed_by(self, other_user):
     #     """Is this user followed by `other_user`?"""

@@ -1,14 +1,22 @@
+# flask_jwt_extended.get_jwt_identity()
+
 import os
 from dotenv import load_dotenv
 
 from flask import (
-    Flask, render_template, request, flash, redirect, session, g, abort,
+    Flask, render_template, request, flash, redirect, session, g, abort, jsonify
 )
 from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 
 from models import (
     db, connect_db, User, Message, DEFAULT_IMAGE_URL, DEFAULT_HEADER_IMAGE_URL)
+
+from flask_jwt_extended import create_access_token
+from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import jwt_required
+from flask_jwt_extended import JWTManager
+
 
 load_dotenv()
 
@@ -24,9 +32,13 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = False
 app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = True
 app.config['SECRET_KEY'] = os.environ['SECRET_KEY']
+app.config['JWT_SECRET_KEY'] = os.environ['JWT_SECRET_KEY']
+
 toolbar = DebugToolbarExtension(app)
 
 connect_db(app)
+jwt = JWTManager(app)
+
 
 
 ##############################################################################
@@ -102,41 +114,22 @@ def signup():
         return render_template('users/signup.html', form=form)
 
 
-@app.route('/login', methods=["GET", "POST"])
+@app.route('/login', methods=["POST"])
 def login():
-    """Handle user login and redirect to homepage on success."""
+    """Handle user login and return token"""
+    
+    data = request.json
+    user = User.aunthenticate(data)
+    if not user:
+        return jsonify({error: "invalid credentials"},401)
 
-    form = LoginForm()
+    serialized = User.serialize(user)
+    access_token = create_access_token(identity=username)
 
-    if form.validate_on_submit():
-        user = User.authenticate(
-            form.username.data,
-            form.password.data)
-
-        if user:
-            do_login(user)
-            flash(f"Hello, {user.username}!", "success")
-            return redirect("/")
-
-        flash("Invalid credentials.", 'danger')
-
-    return render_template('users/login.html', form=form)
+    return jsonify(access_token=access_token)
+    
 
 
-@app.post('/logout')
-def logout():
-    """Handle logout of user and redirect to homepage."""
-
-    form = g.csrf_form
-
-    if not form.validate_on_submit() or not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
-
-    do_logout()
-
-    flash("You have successfully logged out.", 'success')
-    return redirect("/login")
 
 
 ##############################################################################
@@ -179,27 +172,27 @@ def show_user(user_id):
 ##############################################################################
 # Listings routes:
 
-@app.route('/listings', methods=["GET", "POST"])
-def add_message():
-    """Add a message:
+# @app.route('/listings', methods=["GET", "POST"])
+# def add_message():
+#     """Add a message:
 
-    Show form if GET. If valid, update message and redirect to user page.
-    """
+#     Show form if GET. If valid, update message and redirect to user page.
+#     """
 
-    if not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
+#     if not g.user:
+#         flash("Access unauthorized.", "danger")
+#         return redirect("/")
 
-    form = MessageForm()
+#     form = MessageForm()
 
-    if form.validate_on_submit():
-        msg = Message(text=form.text.data)
-        g.user.messages.append(msg)
-        db.session.commit()
+#     if form.validate_on_submit():
+#         msg = Message(text=form.text.data)
+#         g.user.messages.append(msg)
+#         db.session.commit()
 
-        return redirect(f"/users/{g.user.id}")
+#         return redirect(f"/users/{g.user.id}")
 
-    return render_template('messages/create.html', form=form)
+#     return render_template('messages/create.html', form=form)
 
 
 @app.get('/listings/<int:listing_id>')
@@ -217,27 +210,27 @@ def get_listing(listing_id):
 ##############################################################################
 # Messages routes:
 
-@app.route('/messages', methods=["GET", "POST"])
-def add_message():
-    """Add a message:
+# @app.route('/messages', methods=["GET", "POST"])
+# def add_message():
+#     """Add a message:
 
-    Show form if GET. If valid, update message and redirect to user page.
-    """
+#     Show form if GET. If valid, update message and redirect to user page.
+#     """
 
-    if not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
+#     if not g.user:
+#         flash("Access unauthorized.", "danger")
+#         return redirect("/")
 
-    form = MessageForm()
+#     form = MessageForm()
 
-    if form.validate_on_submit():
-        msg = Message(text=form.text.data)
-        g.user.messages.append(msg)
-        db.session.commit()
+#     if form.validate_on_submit():
+#         msg = Message(text=form.text.data)
+#         g.user.messages.append(msg)
+#         db.session.commit()
 
-        return redirect(f"/users/{g.user.id}")
+#         return redirect(f"/users/{g.user.id}")
 
-    return render_template('messages/create.html', form=form)
+#     return render_template('messages/create.html', form=form)
 
 
 ##############################################################################
