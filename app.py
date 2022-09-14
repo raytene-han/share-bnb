@@ -202,7 +202,7 @@ def message_listing_owner(listing_id):
 ##############################################################################
 # Messages routes:
 
-@app.route('/messages', methods=["GET", "POST"])
+@app.route('/api/messages', methods=["GET", "POST"])
 def get_messages():
     """Add a message:
 
@@ -215,8 +215,10 @@ def get_messages():
 
     # form = MessageForm()
     user = User.query.get_or_404(10)
+    sent = [Message.serialize(m) for m in user.messages_sent]
+    recd = [Message.serialize(m) for m in user.messages_received]
     breakpoint()
-    return jsonify({"sent": user.messages_sent, "received": user.messages_received})
+    return jsonify({"sent": sent, "received": recd})
 
 
 ##############################################################################

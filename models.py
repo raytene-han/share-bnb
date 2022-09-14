@@ -251,13 +251,39 @@ class User(db.Model):
     #     backref="following",
     # )
 
+    # messages_received = db.relationship(
+    #     "Message",
+    #     primaryjoin=(Message.to_user_id == id),
+    #     backref="user"
+    # )
+
+    # messages_sent = db.relationship(
+    #     "Message",
+    #     primaryjoin=(Message.from_user_id == id),
+    #     backref="user",
+    # )
+    # messages_received = db.relationship(
+    #     "User",
+    #     secondary="messages",
+    #     primaryjoin=(Message.to_user_id == id),
+    #     secondaryjoin=(Message.from_user_id == id),
+    #     backref="messages_sent",
+    # )
+
     messages_received = db.relationship(
-        "User",
-        secondary="messages",
-        primaryjoin=(Message.to_user_id == id),
-        secondaryjoin=(Message.from_user_id == id),
-        backref="messages_sent",
+        "Message",
+        foreign_keys=[Message.to_user_id]
     )
+    
+    messages_sent = db.relationship(
+        "Message",
+        foreign_keys=[Message.from_user_id]
+    )
+    # messages_sent = db.relationship(
+    #     "Message",
+    #     join=(Message.from_user_id == id),
+    #     backref="users",
+    # )
 
     # liked_messages = db.relationship('Message', secondary="likes")
 
