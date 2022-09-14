@@ -9,14 +9,67 @@ import logging
 import boto3
 from botocore.exceptions import ClientError
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 bcrypt = Bcrypt()
 db = SQLAlchemy()
 
 DEFAULT_IMAGE_URL = "/static/images/default-pic.png"
 DEFAULT_HEADER_IMAGE_URL = "/static/images/warbler-hero.jpg"
-# BUCKET_NAME = os.environ['BUCKET_NAME']
-BUCKET_NAME = "share-bnb-aj"
+BUCKET_NAME = os.environ['BUCKET_NAME']
+
+class Booking(db.Model):
+    """Connection of a user & listing -> booking."""
+
+    __tablename__ = 'bookings'
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True,
+        autoincrement=True
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('users.id', ondelete="cascade"),
+        nullable=False
+    )
+
+    listing_id = db.Column(
+        db.Integer,
+        db.ForeignKey('listings.id', ondelete="cascade"),
+        nullable=False
+    )
+
+    checkin_date = db.Column(
+        db.DateTime,
+        nullable=False
+    )
+
+    checkout_date = db.Column(
+        db.DateTime,
+        nullable=False
+    )
+
+    booking_date = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.utcnow
+    )
+
+    def serialize(self):
+        """Serialize booking to a dict of booking info."""
+
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "listing_id": self.listing_id,
+            "checkin_date": self.checkin_date,
+            "checkout_date": self.checkout_date,
+            "booking_date": self.booking_date,
+        }
 
 
 class Listing(db.Model):
@@ -92,7 +145,7 @@ class Listing(db.Model):
 
     #     db.session.add(user)
     #     return user
-    
+
     def serialize(self):
         """Serialize listing to a dict of listing info."""
 
@@ -136,6 +189,17 @@ class Message(db.Model):
         nullable=False,
         default=datetime.utcnow,
     )
+
+    def serialize(self):
+        """Serialize message to a dict of message info."""
+
+        return {
+            "id": self.id,
+            "to_user_id": self.to_user_id,
+            "from_user_id": self.from_user_id,
+            "text": self.text,
+            "timestamp": self.timestamp,
+        }
 
 
 

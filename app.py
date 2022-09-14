@@ -11,10 +11,10 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
 
 from models import (
-    db, connect_db, User, Message, Listing, DEFAULT_IMAGE_URL, 
+    db, connect_db, User, Message, Listing, Booking, DEFAULT_IMAGE_URL,
     DEFAULT_HEADER_IMAGE_URL, BUCKET_NAME)
 
-import jwt 
+import jwt
 
 
 
@@ -132,16 +132,17 @@ def add_message():
     """
     price = request.form.get('price')
     details = request.form.get('details')
-    
+
     listing = Listing(user_id=8, price=float(price), details=details)
     db.session.add(listing)
     db.session.commit()
 
     photo = request.files['photo']
+    photo.filename = f"{listing.id}.jpg"
 
     photo.save(os.path.join("uploads", secure_filename(photo.filename)))
     url = Listing.upload_file(file_name=photo.filename)
-
+    os.remove(os.path.join("uploads", secure_filename(photo.filename)))
 
     listing.photos = url
     db.session.commit()
@@ -160,30 +161,62 @@ def get_listing(listing_id):
     return jsonify(listing=serialized)
 
 
+@app.post('/api/listings/<int:listing_id>/book')
+def book_listing(listing_id):
+    """Book a listing."""
+
+
+    checkin_date = request.json.get('checkin_date')
+    checkout_date = request.json.get('checkout_date')
+
+    booking = Booking(user_id=10,
+                      listing_id=listing_id,
+                      checkin_date=checkin_date,
+                      checkout_date=checkout_date)
+
+    db.session.add(booking)
+    db.session.commit()
+
+    serialized = Booking.serialize(booking)
+
+    return jsonify(booking=serialized)
+
+@app.post('/api/listings/<int:listing_id>/message')
+def message_listing_owner(listing_id):
+    """Message an owner about a listing."""
+
+    text = request.json.get('text')
+    listing = Listing.query.get_or_404(listing_id)
+
+    message = Message(to_user_id=listing.user_id,
+                      from_user_id=10,
+                      text=text)
+
+    db.session.add(message)
+    db.session.commit()
+
+    serialized = Message.serialize(message)
+
+    return jsonify(message=serialized)
+
 ##############################################################################
 # Messages routes:
 
-# @app.route('/messages', methods=["GET", "POST"])
-# def add_message():
-#     """Add a message:
+@app.route('/messages', methods=["GET", "POST"])
+def get_messages():
+    """Add a message:
 
-#     Show form if GET. If valid, update message and redirect to user page.
-#     """
+    Show form if GET. If valid, update message and redirect to user page.
+    """
 
-#     if not g.user:
-#         flash("Access unauthorized.", "danger")
-#         return redirect("/")
+    # if not g.user:
+    #     flash("Access unauthorized.", "danger")
+    #     return redirect("/")
 
-#     form = MessageForm()
-
-#     if form.validate_on_submit():
-#         msg = Message(text=form.text.data)
-#         g.user.messages.append(msg)
-#         db.session.commit()
-
-#         return redirect(f"/users/{g.user.id}")
-
-#     return render_template('messages/create.html', form=form)
+    # form = MessageForm()
+    user = User.query.get_or_404(10)
+    breakpoint()
+    return jsonify({"sent": user.messages_sent, "received": user.messages_received})
 
 
 ##############################################################################

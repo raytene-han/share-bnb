@@ -16,17 +16,17 @@ db.create_all()
 USER_DATA = {
     "username": "TestUsername1",
     "first_name": "TestFirstName1",
-    "last_name": "TestLastName1,
+    "last_name": "TestLastName1",
     "email": "testEmail1@email.com",
-    "password": "password"  
+    "password": "password"
 }
 
 USER_DATA_2 = {
     "username": "TestUsername2",
     "first_name": "TestSFirstName2",
-    "last_name": "TestLastName2,
+    "last_name": "TestLastName2",
     "email": "testEmail2@email.com",
-    "password": "password"  
+    "password": "password"
 }
 
 

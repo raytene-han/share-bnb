@@ -16,7 +16,7 @@ from models import db, User, Listing
 # connected to the database
 
 os.environ['DATABASE_URL'] = "postgresql:///sharebnb_test"
-os.environ['BUCKET_NAME'] = "UXEAHT"
+# os.environ['BUCKET_NAME'] = "UXEAHT"
 
 # Now we can import app
 
@@ -36,7 +36,7 @@ class ListingModelTestCase(TestCase):
 
         u1 = User.signup("u1", "u1@email.com", "password", "userFirst1","userLast1" )
         u2 = User.signup("u2", "u2@email.com", "password", "userFirst2","userLast2" )
-        
+
 
         db.session.commit()
         self.u1_id = u1.id
@@ -44,7 +44,7 @@ class ListingModelTestCase(TestCase):
 
         l1 = Listing(user_id=self.u1_id, price=100, details="cool test locale")
         l2 = Listing(user_id=self.u2_id, price=200, details="cool test2 locale")
-        
+
         # db.session.add_all(l1,l2)
         db.session.add(l1)
         db.session.add(l2)
@@ -52,7 +52,7 @@ class ListingModelTestCase(TestCase):
 
         self.l1_id = l1.id
         self.l2_id = l2.id
-        
+
         self.client = app.test_client()
 
     def tearDown(self):
@@ -63,7 +63,7 @@ class ListingModelTestCase(TestCase):
     def test_get_listings(self):
         listings = Listing.query.all()
         listing = Listing.query.get(self.l1_id)
-        
+
 
         self.assertEqual(len(listings),2)
         self.assertEqual(listing.details, "cool test locale")
@@ -71,17 +71,12 @@ class ListingModelTestCase(TestCase):
         self.assertEqual(listing.photos, None)
         self.assertEqual(listing.price, 100.00)
         self.assertEqual(listing.user_id, self.u1_id)
-		    
 
-    # def test_is_following(self):
-    #     u1 = Listing.query.get(self.u1_id)
-    #     u2 = Listing.query.get(self.u2_id)
 
-    #     u1.following.append(u2)
-    #     db.session.commit()
+    def test_upload_file(self):
+        url = Listing.upload_file("test.jpg")
 
-    #     self.assertTrue(u1.is_following(u2))
-    #     self.assertFalse(u2.is_following(u1))
+        self.assertIn("s3.amazonaws.com/test.jpg", url)
 
     # def test_is_followed_by(self):
     #     u1 = Listing.query.get(self.u1_id)
