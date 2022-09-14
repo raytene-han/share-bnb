@@ -8,14 +8,16 @@ from flask import (
 )
 from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
+from werkzeug.utils import secure_filename
 
 from models import (
-    db, connect_db, User, Message, DEFAULT_IMAGE_URL, DEFAULT_HEADER_IMAGE_URL)
+    db, connect_db, User, Message, Listing, DEFAULT_IMAGE_URL, DEFAULT_HEADER_IMAGE_URL)
 
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import JWTManager
+
 
 
 load_dotenv()
@@ -55,12 +57,6 @@ def add_user_to_g():
     else:
         g.user = None
 
-
-@app.before_request
-def add_csrf_only_form():
-    """Add a CSRF-only form so that every route can use it."""
-
-    g.csrf_form = CSRFProtection()
 
 
 def do_login(user):
@@ -117,17 +113,17 @@ def signup():
 @app.route('/login', methods=["POST"])
 def login():
     """Handle user login and return token"""
-    
+
     data = request.json
-    user = User.aunthenticate(data)
+    user = User.authenticate(data.get("username"), data.get("password"))
     if not user:
-        return jsonify({error: "invalid credentials"},401)
+        return jsonify({"error": "invalid credentials"},401)
 
     serialized = User.serialize(user)
-    access_token = create_access_token(identity=username)
+    access_token = create_access_token(identity=user.username)
 
     return jsonify(access_token=access_token)
-    
+
 
 
 
@@ -172,27 +168,33 @@ def show_user(user_id):
 ##############################################################################
 # Listings routes:
 
-# @app.route('/listings', methods=["GET", "POST"])
-# def add_message():
-#     """Add a message:
+@app.route('/listings', methods=["GET", "POST"])
+def add_message():
+    """Add a listing:
 
-#     Show form if GET. If valid, update message and redirect to user page.
-#     """
+    1. check logged in to get user_id
+    2. validate data (price, details?, photo?)
+    3. if valid, then add to database
+        if photo, call Listing.upload
+        update listing with photo url
+    """
+    price = request.form.get('price')
+    details = request.form.get('details')
+    breakpoint()
+    listing = Listing(user_id=8, price=float(price), details=details)
+    db.session.add(listing)
+    db.session.commit()
 
-#     if not g.user:
-#         flash("Access unauthorized.", "danger")
-#         return redirect("/")
+    photo = request.files['photo'];
 
-#     form = MessageForm()
+    photo.save(os.path.join("uploads", secure_filename(photo.filename)))
+    url = Listing.upload_file(file_name=photo.filename)
 
-#     if form.validate_on_submit():
-#         msg = Message(text=form.text.data)
-#         g.user.messages.append(msg)
-#         db.session.commit()
 
-#         return redirect(f"/users/{g.user.id}")
+    listing.photos = url
+    db.session.commit()
 
-#     return render_template('messages/create.html', form=form)
+    return jsonify(url=url)
 
 
 @app.get('/listings/<int:listing_id>')

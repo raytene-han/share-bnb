@@ -5,11 +5,17 @@ from datetime import datetime
 from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
 
+import logging
+import boto3
+from botocore.exceptions import ClientError
+import os
+
 bcrypt = Bcrypt()
 db = SQLAlchemy()
 
 DEFAULT_IMAGE_URL = "/static/images/default-pic.png"
 DEFAULT_HEADER_IMAGE_URL = "/static/images/warbler-hero.jpg"
+BUCKET_NAME = os.environ['BUCKET_NAME']
 
 
 class Listing(db.Model):
@@ -41,6 +47,50 @@ class Listing(db.Model):
     details = db.Column(
         db.Text
     )
+
+    @classmethod
+    def upload_file(cls, file_name, object_name=None):
+        """Upload a file to an S3 bucket
+
+        :param file_name: File to upload
+        :param bucket: Bucket to upload to
+        :param object_name: S3 object name. If not specified then file_name is used
+        :return: True if file was uploaded, else False
+        """
+        mimetype = 'image/jpeg'
+        # If S3 object_name was not specified, use file_name
+        if object_name is None:
+            object_name = os.path.basename(file_name)
+
+        # Upload the file
+        s3_client = boto3.client('s3')
+        try:
+            response = s3_client.upload_file(f"uploads/{file_name}",
+                                            BUCKET_NAME,
+                                            object_name,
+                                            ExtraArgs={
+                                                "ContentType": mimetype
+                                                    })
+        except ClientError as e:
+            logging.error(e)
+            return False
+        return f"https://{BUCKET_NAME}.s3.amazonaws.com/{file_name}"
+
+    @classmethod
+    def add_listing(cls, user_id, price, photo_url, details):
+        """Adds listing to database.
+        """
+
+        listing = Listing(
+            username=username,
+            email=email,
+            password=hashed_pwd,
+            first_name=firstName,
+            last_name=lastName
+        )
+
+        db.session.add(user)
+        return user
 
 class Message(db.Model):
     """A message to another user."""
@@ -178,16 +228,16 @@ class User(db.Model):
                 return user
 
         return False
-    
+
     def serialize(self):
         """Serialize user to a dict of user info."""
 
         return {
             "id": self.id,
-            "username": self.flavor,
-            "email": self.rating,
-            "first_name": self.size,
-            "last_name": self.image,
+            "username": self.username,
+            "email": self.email,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
         }
 
     # def is_followed_by(self, other_user):

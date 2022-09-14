@@ -2,6 +2,7 @@ from unittest import TestCase
 
 from app import app
 from models import db, User
+from flask_jwt_extended import get_jwt_identity
 
 # Use test database and don't clutter tests with SQL
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql:///sharebnb_test'
@@ -16,17 +17,17 @@ db.create_all()
 USER_DATA = {
     "username": "TestUsername1",
     "first_name": "TestFirstName1",
-    "last_name": "TestLastName1,
+    "last_name": "TestLastName1",
     "email": "testEmail1@email.com",
-    "password": "password"  
+    "password": "password"
 }
 
 USER_DATA_2 = {
     "username": "TestUsername2",
     "first_name": "TestSFirstName2",
-    "last_name": "TestLastName2,
+    "last_name": "TestLastName2",
     "email": "testEmail2@email.com",
-    "password": "password"  
+    "password": "password"
 }
 
 
@@ -59,6 +60,7 @@ class UserRoutes(TestCase):
 
             self.assertEqual(resp.status_code, 200)
             data = resp.json
+            token = get_jwt_identity(data.get("access_token"))
             self.assertEqual(data, {
                 "token": {"string goes here"}
             })
