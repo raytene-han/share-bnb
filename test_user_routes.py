@@ -1,12 +1,16 @@
 from unittest import TestCase
 
+import os
 from app import app
 from models import db, User
-from flask_jwt_extended import get_jwt_identity
+import jwt 
+
 
 # Use test database and don't clutter tests with SQL
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql:///sharebnb_test'
 app.config['SQLALCHEMY_ECHO'] = False
+
+SECRET_KEY = os.environ['SECRET_KEY']
 
 # Make Flask errors be real errors, rather than HTML pages with error info
 app.config['TESTING'] = True
@@ -50,51 +54,51 @@ class UserRoutes(TestCase):
 
         db.session.rollback()
 
-    def test_get_user(self):
+    def test_create_user(self):
         with app.test_client() as client:
-            url = f"/api/users/login"
-            resp = client.post(url, data={
-                                          "username": "TestUsername1",
+            url = "/api/signup"
+            resp = client.post(url, json=USER_DATA_2)
+
+            self.assertEqual(resp.status_code, 201)
+
+            data = resp.json.copy()
+            
+            decode = jwt.decode(data.get("access_token"),SECRET_KEY,algorithms=["HS256"])
+            self.assertEqual(decode, {'username': 'TestUsername2'})
+
+            self.assertEqual(User.query.count(), 2)
+
+    def test_login_user(self):
+        with app.test_client() as client:
+            url = "/api/signup"
+            resp = client.post(url, json=USER_DATA_2)
+         
+            url = "/api/login"
+            resp = client.post(url, json={
+                                          "username": "TestUsername2",
                                           "password": "password"
                                           })
-
+    
             self.assertEqual(resp.status_code, 200)
             data = resp.json
-            token = get_jwt_identity(data.get("access_token"))
-            self.assertEqual(data, {
-                "token": {"string goes here"}
-            })
-
-    # def test_get_user_missing(self):
-    #     with app.test_client() as client:
-    #         url = f"/api/users/99999"
-    #         resp = client.get(url)
-
-    #         self.assertEqual(resp.status_code, 404)
-
-    # def test_create_user(self):
-    #     with app.test_client() as client:
-    #         url = "/api/users"
-    #         resp = client.post(url, json=user_DATA_2)
-
-    #         self.assertEqual(resp.status_code, 201)
-
-    #         data = resp.json.copy()
-
-    #         # don't know what ID we'll get, make sure it's an int & normalize
-    #         self.assertIsInstance(data['user']['id'], int)
-    #         del data['user']['id']
-
-    #         self.assertEqual(data, {
-    #             "user": {
-    #                 "flavor": "TestFlavor2",
-    #                 "size": "TestSize2",
-    #                 "rating": 10,
-    #                 "image": "http://test.com/user2.jpg"
-    #             }
-    #         })
-
-    #         self.assertEqual(user.query.count(), 2)
+            decode = jwt.decode(data.get("access_token"),SECRET_KEY,algorithms=["HS256"])
+            self.assertEqual(decode, {'username': 'TestUsername2'})
+    
+    def test_login_user_bad_credentials(self):
+        with app.test_client() as client:
+            url = "/api/signup"
+            resp = client.post(url, json=USER_DATA_2)
+         
+            url = "/api/login"
+            resp = client.post(url, json={
+                                          "username": "TestUsername2",
+                                          "password": "badpassword"
+                                          })
+    
+            self.assertEqual(resp.status_code, 401)
+            data = resp.json
+            self.assertEqual(data, {"error": "invalid credentials"})
+            
 
     # def test_update_user(self):
     #     with app.test_client() as client:

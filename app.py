@@ -11,12 +11,10 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
 
 from models import (
-    db, connect_db, User, Message, Listing, DEFAULT_IMAGE_URL, DEFAULT_HEADER_IMAGE_URL)
+    db, connect_db, User, Message, Listing, DEFAULT_IMAGE_URL, 
+    DEFAULT_HEADER_IMAGE_URL, BUCKET_NAME)
 
-from flask_jwt_extended import create_access_token
-from flask_jwt_extended import get_jwt_identity
-from flask_jwt_extended import jwt_required
-from flask_jwt_extended import JWTManager
+import jwt 
 
 
 
@@ -39,7 +37,9 @@ app.config['JWT_SECRET_KEY'] = os.environ['JWT_SECRET_KEY']
 toolbar = DebugToolbarExtension(app)
 
 connect_db(app)
-jwt = JWTManager(app)
+# jwt = JWTManager(app)
+
+SECRET_KEY = os.environ['SECRET_KEY']
 
 
 
@@ -72,7 +72,7 @@ def do_logout():
         del session[CURR_USER_KEY]
 
 
-@app.route('/signup', methods=["GET", "POST"])
+@app.route('/api/signup', methods=["GET", "POST"])
 def signup():
     """Handle user signup.
 
@@ -83,92 +83,44 @@ def signup():
     If the there already is a user with that username: flash message
     and re-present form.
     """
-
-    if CURR_USER_KEY in session:
-        del session[CURR_USER_KEY]
-    form = UserAddForm()
-
-    if form.validate_on_submit():
-        try:
-            user = User.signup(
-                username=form.username.data,
-                password=form.password.data,
-                email=form.email.data,
-                image_url=form.image_url.data or User.image_url.default.arg,
-            )
-            db.session.commit()
-
-        except IntegrityError:
-            flash("Username already taken", 'danger')
-            return render_template('users/signup.html', form=form)
-
-        do_login(user)
-
-        return redirect("/")
-
-    else:
-        return render_template('users/signup.html', form=form)
+    data = request.json
 
 
-@app.route('/login', methods=["POST"])
+    user = User.signup(
+        username=data.get("username"),
+        password=data.get("password"),
+        email=data.get("email"),
+        firstName=data.get("first_name"),
+        lastName=data.get("last_name"),
+    )
+    db.session.commit()
+    do_login(user)
+
+    serialized = User.serialize(user)
+    access_token = jwt.encode({"username":user.username},SECRET_KEY)
+
+    return jsonify({"access_token":access_token}),201
+
+
+@app.route('/api/login', methods=["POST"])
 def login():
     """Handle user login and return token"""
 
     data = request.json
     user = User.authenticate(data.get("username"), data.get("password"))
     if not user:
-        return jsonify({"error": "invalid credentials"},401)
+        return jsonify({"error": "invalid credentials"}),401
 
     serialized = User.serialize(user)
-    access_token = create_access_token(identity=user.username)
+    access_token = jwt.encode({"username":user.username},SECRET_KEY)
 
     return jsonify(access_token=access_token)
-
-
-
-
-
-##############################################################################
-# General user routes:
-
-@app.get('/users')
-def list_users():
-    """Page with listing of users.
-
-    Can take a 'q' param in querystring to search by that username.
-    """
-
-    if not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
-
-    search = request.args.get('q')
-
-    if not search:
-        users = User.query.all()
-    else:
-        users = User.query.filter(User.username.like(f"%{search}%")).all()
-
-    return render_template('users/index.html', users=users)
-
-
-@app.get('/users/<int:user_id>')
-def show_user(user_id):
-    """Show user profile."""
-
-    if not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
-
-    user = User.query.get_or_404(user_id)
-
-    return render_template('users/show.html', user=user)
 
 
 ##############################################################################
 # Listings routes:
 
-@app.route('/listings', methods=["GET", "POST"])
+@app.route('/api/listings', methods=["GET", "POST"])
 def add_message():
     """Add a listing:
 
@@ -180,12 +132,12 @@ def add_message():
     """
     price = request.form.get('price')
     details = request.form.get('details')
-    breakpoint()
+    
     listing = Listing(user_id=8, price=float(price), details=details)
     db.session.add(listing)
     db.session.commit()
 
-    photo = request.files['photo'];
+    photo = request.files['photo']
 
     photo.save(os.path.join("uploads", secure_filename(photo.filename)))
     url = Listing.upload_file(file_name=photo.filename)
@@ -193,20 +145,19 @@ def add_message():
 
     listing.photos = url
     db.session.commit()
+    serialized = Listing.serialize(listing)
 
-    return jsonify(url=url)
+    return jsonify(listing=serialized)
 
 
-@app.get('/listings/<int:listing_id>')
+@app.get('/api/listings/<int:listing_id>')
 def get_listing(listing_id):
     """Get details about a listing."""
 
-    if not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
+    listing = Listing.query.get_or_404(listing_id)
+    serialized = Listing.serialize(listing)
 
-    msg = Message.query.get_or_404(message_id)
-    return render_template('messages/show.html', message=msg)
+    return jsonify(listing=serialized)
 
 
 ##############################################################################

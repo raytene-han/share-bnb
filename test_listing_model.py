@@ -1,21 +1,22 @@
-"""User model tests."""
+"""Listing model tests."""
 
 # run these tests like:
 #
-#    python -m unittest test_user_model.py
+#    python -m unittest test_listing_model.py
 
 
 import os
 from unittest import TestCase
 
-from models import db, User
+from models import db, User, Listing
 
 # BEFORE we import our app, let's set an environmental variable
 # to use a different database for tests (we need to do this
 # before we import our app, since that will have already
 # connected to the database
 
-os.environ['DATABASE_URL'] = "postgresql:///warbler_test"
+os.environ['DATABASE_URL'] = "postgresql:///sharebnb_test"
+os.environ['BUCKET_NAME'] = "UXEAHT"
 
 # Now we can import app
 
@@ -28,84 +29,91 @@ from app import app
 db.create_all()
 
 
-class UserModelTestCase(TestCase):
+class ListingModelTestCase(TestCase):
     def setUp(self):
         User.query.delete()
+        # Listing.query.delete()
 
-        u1 = User.signup("u1", "u1@email.com", "password", None)
-        u2 = User.signup("u2", "u2@email.com", "password", None)
+        u1 = User.signup("u1", "u1@email.com", "password", "userFirst1","userLast1" )
+        u2 = User.signup("u2", "u2@email.com", "password", "userFirst2","userLast2" )
+        
 
         db.session.commit()
         self.u1_id = u1.id
         self.u2_id = u2.id
 
+        l1 = Listing(user_id=self.u1_id, price=100, details="cool test locale")
+        l2 = Listing(user_id=self.u2_id, price=200, details="cool test2 locale")
+        
+        # db.session.add_all(l1,l2)
+        db.session.add(l1)
+        db.session.add(l2)
+        db.session.commit()
+
+        self.l1_id = l1.id
+        self.l2_id = l2.id
+        
         self.client = app.test_client()
 
     def tearDown(self):
         db.session.rollback()
 
-    def test_user_model(self):
-        u1 = User.query.get(self.u1_id)
+    # #################### Listing tests
 
-        # User should have no messages & no followers
-        self.assertEqual(len(u1.messages), 0)
-        self.assertEqual(len(u1.followers), 0)
+    def test_get_listings(self):
+        listings = Listing.query.all()
+        listing = Listing.query.get(self.l1_id)
+        
 
-    # #################### Following tests
+        self.assertEqual(len(listings),2)
+        self.assertEqual(listing.details, "cool test locale")
+        self.assertEqual(listing.id, self.l1_id)
+        self.assertEqual(listing.photos, None)
+        self.assertEqual(listing.price, 100.00)
+        self.assertEqual(listing.user_id, self.u1_id)
+		    
 
-    def test_user_follows(self):
-        u1 = User.query.get(self.u1_id)
-        u2 = User.query.get(self.u2_id)
+    # def test_is_following(self):
+    #     u1 = Listing.query.get(self.u1_id)
+    #     u2 = Listing.query.get(self.u2_id)
 
-        u1.following.append(u2)
-        db.session.commit()
+    #     u1.following.append(u2)
+    #     db.session.commit()
 
-        self.assertEqual(u2.following, [])
-        self.assertEqual(u2.followers, [u1])
-        self.assertEqual(u1.followers, [])
-        self.assertEqual(u1.following, [u2])
+    #     self.assertTrue(u1.is_following(u2))
+    #     self.assertFalse(u2.is_following(u1))
 
-    def test_is_following(self):
-        u1 = User.query.get(self.u1_id)
-        u2 = User.query.get(self.u2_id)
+    # def test_is_followed_by(self):
+    #     u1 = Listing.query.get(self.u1_id)
+    #     u2 = Listing.query.get(self.u2_id)
 
-        u1.following.append(u2)
-        db.session.commit()
+    #     u1.following.append(u2)
+    #     db.session.commit()
 
-        self.assertTrue(u1.is_following(u2))
-        self.assertFalse(u2.is_following(u1))
+    #     self.assertTrue(u2.is_followed_by(u1))
+    #     self.assertFalse(u1.is_followed_by(u2))
 
-    def test_is_followed_by(self):
-        u1 = User.query.get(self.u1_id)
-        u2 = User.query.get(self.u2_id)
+    # # #################### Signup Tests
 
-        u1.following.append(u2)
-        db.session.commit()
+    # def test_valid_signup(self):
+    #     u1 = Listing.query.get(self.u1_id)
 
-        self.assertTrue(u2.is_followed_by(u1))
-        self.assertFalse(u1.is_followed_by(u2))
+    #     self.assertEqual(u1.Listingname, "u1")
+    #     self.assertEqual(u1.email, "u1@email.com")
+    #     self.assertNotEqual(u1.password, "password")
+    #     # Bcrypt strings should start with $2b$
+    #     self.assertTrue(u1.password.startswith("$2b$"))
 
-    # #################### Signup Tests
+    # # #################### Authentication Tests
 
-    def test_valid_signup(self):
-        u1 = User.query.get(self.u1_id)
+    # def test_valid_authentication(self):
+    #     u1 = Listing.query.get(self.u1_id)
 
-        self.assertEqual(u1.username, "u1")
-        self.assertEqual(u1.email, "u1@email.com")
-        self.assertNotEqual(u1.password, "password")
-        # Bcrypt strings should start with $2b$
-        self.assertTrue(u1.password.startswith("$2b$"))
+    #     u = Listing.authenticate("u1", "password")
+    #     self.assertEqual(u, u1)
 
-    # #################### Authentication Tests
+    # def test_invalid_Listingname(self):
+    #     self.assertFalse(Listing.authenticate("bad-Listingname", "password"))
 
-    def test_valid_authentication(self):
-        u1 = User.query.get(self.u1_id)
-
-        u = User.authenticate("u1", "password")
-        self.assertEqual(u, u1)
-
-    def test_invalid_username(self):
-        self.assertFalse(User.authenticate("bad-username", "password"))
-
-    def test_wrong_password(self):
-        self.assertFalse(User.authenticate("u1", "bad-password"))
+    # def test_wrong_password(self):
+    #     self.assertFalse(Listing.authenticate("u1", "bad-password"))

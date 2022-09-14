@@ -15,7 +15,8 @@ db = SQLAlchemy()
 
 DEFAULT_IMAGE_URL = "/static/images/default-pic.png"
 DEFAULT_HEADER_IMAGE_URL = "/static/images/warbler-hero.jpg"
-BUCKET_NAME = os.environ['BUCKET_NAME']
+# BUCKET_NAME = os.environ['BUCKET_NAME']
+BUCKET_NAME = "share-bnb-aj"
 
 
 class Listing(db.Model):
@@ -76,21 +77,32 @@ class Listing(db.Model):
             return False
         return f"https://{BUCKET_NAME}.s3.amazonaws.com/{file_name}"
 
-    @classmethod
-    def add_listing(cls, user_id, price, photo_url, details):
-        """Adds listing to database.
-        """
+    # @classmethod
+    # def add_listing(cls, user_id, price, photo_url, details):
+    #     """Adds listing to database.
+    #     """
 
-        listing = Listing(
-            username=username,
-            email=email,
-            password=hashed_pwd,
-            first_name=firstName,
-            last_name=lastName
-        )
+    #     listing = Listing(
+    #         username=username,
+    #         email=email,
+    #         password=hashed_pwd,
+    #         first_name=firstName,
+    #         last_name=lastName
+    #     )
 
-        db.session.add(user)
-        return user
+    #     db.session.add(user)
+    #     return user
+    
+    def serialize(self):
+        """Serialize listing to a dict of listing info."""
+
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "photos": self.photos,
+            "price": self.price,
+            "details": self.details,
+        }
 
 class Message(db.Model):
     """A message to another user."""
