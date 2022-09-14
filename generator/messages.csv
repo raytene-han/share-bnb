@@ -1,0 +1,8 @@
+to_user_id,from_user_id,text,timestamp
+79,1,hello,2022-04-26
+1,79,hi there,2022-04-26
+79,1,your house looks cool,2022-04-26
+1,79,thanks,2022-04-26
+8,1,i love beets,2022-08-09
+8,1,i would like to stay here,2022-08-09
+1,8,bears!,2022-08-09

@@ -89,6 +89,11 @@ class Listing(db.Model):
         nullable=False
     )
 
+    name = db.Column(
+        db.Text,
+        nullable=False
+    )
+
     photos = db.Column(
         db.Text
     )
@@ -274,7 +279,7 @@ class User(db.Model):
         "Message",
         foreign_keys=[Message.to_user_id]
     )
-    
+
     messages_sent = db.relationship(
         "Message",
         foreign_keys=[Message.from_user_id]
