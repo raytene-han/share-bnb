@@ -3,7 +3,7 @@ from unittest import TestCase
 import os
 from app import app
 from models import db, User
-import jwt 
+import jwt
 
 
 # Use test database and don't clutter tests with SQL
@@ -62,8 +62,8 @@ class UserRoutes(TestCase):
             self.assertEqual(resp.status_code, 201)
 
             data = resp.json.copy()
-            
-            decode = jwt.decode(data.get("access_token"),SECRET_KEY,algorithms=["HS256"])
+
+            decode = jwt.decode(data.get("token"),SECRET_KEY,algorithms=["HS256"])
             self.assertEqual(decode, {'username': 'TestUsername2'})
 
             self.assertEqual(User.query.count(), 2)
@@ -72,33 +72,33 @@ class UserRoutes(TestCase):
         with app.test_client() as client:
             url = "/api/signup"
             resp = client.post(url, json=USER_DATA_2)
-         
+
             url = "/api/login"
             resp = client.post(url, json={
                                           "username": "TestUsername2",
                                           "password": "password"
                                           })
-    
+
             self.assertEqual(resp.status_code, 200)
             data = resp.json
-            decode = jwt.decode(data.get("access_token"),SECRET_KEY,algorithms=["HS256"])
+            decode = jwt.decode(data.get("token"),SECRET_KEY,algorithms=["HS256"])
             self.assertEqual(decode, {'username': 'TestUsername2'})
-    
+
     def test_login_user_bad_credentials(self):
         with app.test_client() as client:
             url = "/api/signup"
             resp = client.post(url, json=USER_DATA_2)
-         
+
             url = "/api/login"
             resp = client.post(url, json={
                                           "username": "TestUsername2",
                                           "password": "badpassword"
                                           })
-    
+
             self.assertEqual(resp.status_code, 401)
             data = resp.json
             self.assertEqual(data, {"error": "invalid credentials"})
-            
+
 
     # def test_update_user(self):
     #     with app.test_client() as client:

@@ -50,26 +50,21 @@ SECRET_KEY = os.environ['SECRET_KEY']
 @app.before_request
 def add_user_to_g():
     """If we're logged in, add curr user to Flask global."""
-
-    if CURR_USER_KEY in session:
-        g.user = User.query.get(session[CURR_USER_KEY])
-
+    # breakpoint()
+    if not request.headers.get('Content-Type'):
+        token = None
+    elif request.headers['Content-Type'] == 'application/json':
+        token = request.json.get("token", None)
     else:
-        g.user = None
+        token = request.form.get("token", None)
 
+    if token:
+        username = jwt.decode(token,SECRET_KEY,algorithms=["HS256"])['username']
+        user = User.query.filter_by(username=username).one()
 
-
-def do_login(user):
-    """Log in user."""
-
-    session[CURR_USER_KEY] = user.id
-
-
-def do_logout():
-    """Log out user."""
-
-    if CURR_USER_KEY in session:
-        del session[CURR_USER_KEY]
+        g.user_id = user.id
+    else:
+        g.user_id = None
 
 
 @app.route('/api/signup', methods=["GET", "POST"])
@@ -85,7 +80,6 @@ def signup():
     """
     data = request.json
 
-
     user = User.signup(
         username=data.get("username"),
         password=data.get("password"),
@@ -94,12 +88,11 @@ def signup():
         lastName=data.get("last_name"),
     )
     db.session.commit()
-    do_login(user)
 
     serialized = User.serialize(user)
-    access_token = jwt.encode({"username":user.username},SECRET_KEY)
+    token = jwt.encode({"username":user.username},SECRET_KEY)
 
-    return jsonify({"access_token":access_token}),201
+    return jsonify({"token":token}),201
 
 
 @app.route('/api/login', methods=["POST"])
@@ -112,16 +105,16 @@ def login():
         return jsonify({"error": "invalid credentials"}),401
 
     serialized = User.serialize(user)
-    access_token = jwt.encode({"username":user.username},SECRET_KEY)
+    token = jwt.encode({"username":user.username},SECRET_KEY)
 
-    return jsonify(access_token=access_token)
+    return jsonify(token=token)
 
 
 ##############################################################################
 # Listings routes:
 
-@app.route('/api/listings', methods=["GET", "POST"])
-def add_message():
+@app.get('/api/listings')
+def get_all_listings():
     """Add a listing:
 
     1. check logged in to get user_id
@@ -130,10 +123,32 @@ def add_message():
         if photo, call Listing.upload
         update listing with photo url
     """
+
+    listings = Listing.query.all()
+
+    serialized = [Listing.serialize(l) for l in listings]
+
+    return jsonify(listings=serialized)
+
+
+@app.post('/api/listings')
+def create_listing():
+    """Add a listing:
+
+    1. check logged in to get user_id
+    2. validate data (price, details?, photo?)
+    3. if valid, then add to database
+        if photo, call Listing.upload
+        update listing with photo url
+    """
+
+    if not g.user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
     price = request.form.get('price')
     details = request.form.get('details')
 
-    listing = Listing(user_id=8, price=float(price), details=details)
+    listing = Listing(user_id=g.user_id, price=float(price), details=details)
     db.session.add(listing)
     db.session.commit()
 
@@ -151,6 +166,7 @@ def add_message():
     return jsonify(listing=serialized)
 
 
+
 @app.get('/api/listings/<int:listing_id>')
 def get_listing(listing_id):
     """Get details about a listing."""
@@ -165,11 +181,13 @@ def get_listing(listing_id):
 def book_listing(listing_id):
     """Book a listing."""
 
+    if not g.user_id:
+        return jsonify({"error": "Unauthorized"}), 401
 
     checkin_date = request.json.get('checkin_date')
     checkout_date = request.json.get('checkout_date')
 
-    booking = Booking(user_id=10,
+    booking = Booking(user_id=g.user_id,
                       listing_id=listing_id,
                       checkin_date=checkin_date,
                       checkout_date=checkout_date)
@@ -185,11 +203,14 @@ def book_listing(listing_id):
 def message_listing_owner(listing_id):
     """Message an owner about a listing."""
 
+    if not g.user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
     text = request.json.get('text')
     listing = Listing.query.get_or_404(listing_id)
 
     message = Message(to_user_id=listing.user_id,
-                      from_user_id=10,
+                      from_user_id=g.user_id,
                       text=text)
 
     db.session.add(message)
@@ -202,23 +223,56 @@ def message_listing_owner(listing_id):
 ##############################################################################
 # Messages routes:
 
-@app.route('/api/messages', methods=["GET", "POST"])
+@app.get('/api/messages')
 def get_messages():
     """Add a message:
 
     Show form if GET. If valid, update message and redirect to user page.
     """
 
-    # if not g.user:
-    #     flash("Access unauthorized.", "danger")
-    #     return redirect("/")
+    if not g.user_id:
+        return jsonify({"error": "Unauthorized"}), 401
 
-    # form = MessageForm()
-    user = User.query.get_or_404(10)
+    user = User.query.get_or_404(g.user_id)
     sent = [Message.serialize(m) for m in user.messages_sent]
     recd = [Message.serialize(m) for m in user.messages_received]
-    breakpoint()
+
     return jsonify({"sent": sent, "received": recd})
+
+
+@app.route('/api/messages/<int:user_id>', methods=["GET", "POST"])
+def open_conversation(user_id):
+    """Gets messages with one person.
+
+    Return messages if GET, add new message if POST.
+    """
+
+    if not g.user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    if request.method == "GET":
+        sent = Message.query.filter(Message.to_user_id==user_id,
+                                    Message.from_user_id==g.user_id).all()
+        recd = Message.query.filter(Message.to_user_id==g.user_id,
+                                    Message.from_user_id==user_id).all()
+
+        sent = [Message.serialize(m) for m in sent]
+        recd = [Message.serialize(m) for m in recd]
+
+        return jsonify({"sent": sent, "received": recd})
+
+    else:
+        message = Message(
+            to_user_id=user_id,
+            from_user_id=g.user_id,
+            text=request.json.get("text")
+            )
+        db.session.add(message)
+        db.session.commit()
+
+        serialized = Message.serialize(message)
+
+        return jsonify(message=serialized), 201
 
 
 ##############################################################################
@@ -230,7 +284,7 @@ def get_messages():
 def page_not_found(e):
     """404 NOT FOUND page."""
 
-    return render_template('404.html'), 404
+    return jsonify({"error": "Page not found."}), 404
 
 
 @app.after_request
