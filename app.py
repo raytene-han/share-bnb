@@ -121,7 +121,6 @@ def login():
 @app.get('/api/listings')
 def get_all_listings():
     """See all listings."""
-    breakpoint()
     listings = Listing.query.all()
 
     serialized = [Listing.serialize(l) for l in listings]
