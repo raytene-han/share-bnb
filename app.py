@@ -90,6 +90,18 @@ def login():
 
     return jsonify(token=access_token)
 
+@app.route('/api/users/<username>', methods=["GET"])
+@jwt_required()
+def get_user(username):
+    """Return user object as json"""
+    if username == get_jwt_identity():
+        user = User.query.filter_by(username=username).one()
+        serialized = User.serialize(user)
+        return jsonify(user=serialized)
+
+    
+    return jsonify({"error": "invalid user"}),400
+
 
 ##############################################################################
 # Listings routes:
@@ -109,9 +121,9 @@ def get_all_listings():
 def create_listing():
     """Add a listing."""
 
-    username = get_jwt_identity();
+    username = get_jwt_identity()
     user = User.query.filter_by(username=username).one()
-    breakpoint()
+    
     name = request.form.get('name')
     price = request.form.get('price')
     details = request.form.get('details')
@@ -123,17 +135,19 @@ def create_listing():
     db.session.add(listing)
     db.session.commit()
 
-    photo = request.files['photo']
-    photo.filename = f"{listing.id}.jpg"
+    if request.files.get('photo'):
+        photo = request.files.get('photo')
+        photo.filename = f"{listing.id}.jpg"
 
-    photo.save(os.path.join("uploads", secure_filename(photo.filename)))
-    url = Listing.upload_file(file_name=photo.filename)
-    os.remove(os.path.join("uploads", secure_filename(photo.filename)))
+        photo.save(os.path.join("uploads", secure_filename(photo.filename)))
+        url = Listing.upload_file(file_name=photo.filename)
+        os.remove(os.path.join("uploads", secure_filename(photo.filename)))
 
-    listing.photos = url
+        listing.photo = url
+
     db.session.commit()
     serialized = Listing.serialize(listing)
-
+    
     return jsonify(listing=serialized), 201
 
 
@@ -153,7 +167,7 @@ def get_listing(listing_id):
 def book_listing(listing_id):
     """Book a listing."""
 
-    username = get_jwt_identity();
+    username = get_jwt_identity()
     user = User.query.filter_by(username=username).one()
 
     checkin_date = request.json.get('checkin_date')
@@ -176,7 +190,7 @@ def book_listing(listing_id):
 def message_listing_owner(listing_id):
     """Message an owner about a listing."""
 
-    username = get_jwt_identity();
+    username = get_jwt_identity()
     user = User.query.filter_by(username=username).one()
 
     text = request.json.get('text')
@@ -261,10 +275,10 @@ def page_not_found(e):
     return jsonify({"error": "Page not found."}), 404
 
 
-# @app.after_request
-# def add_header(response):
-#     """Add non-caching headers on every request."""
+@app.after_request
+def add_header(response):
+    """Add non-caching headers on every request."""
 
-#     # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control
-#     response.cache_control.no_store = True
-#     return response
+    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control
+    response.cache_control.no_store = True
+    return response
