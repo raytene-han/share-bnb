@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 
 from flask import (
-    Flask, request, flash, redirect, session, g, abort, jsonify
+    Flask, request, jsonify
 )
 from flask_debugtoolbar import DebugToolbarExtension
 from flask_cors import CORS
@@ -48,31 +48,7 @@ SECRET_KEY = os.environ['SECRET_KEY']
 
 
 ##############################################################################
-# User signup/login/logout
-
-
-# @app.before_request
-# def add_user_to_g():
-#     """If token exists & decodes successfully, add curr user to Flask global."""
-#     breakpoint()
-#     if not request.headers.get('Content-Type'):
-#         token = None
-#     elif request.headers['Content-Type'] == 'application/json':
-#         token = request.json.get("token", None)
-#     else:
-#         token = request.form.get("token", None)
-
-#     if token:
-#         try:
-#             username = jwt.decode(token,SECRET_KEY,algorithms=["HS256"])['username']
-#             user = User.query.filter_by(username=username).one()
-
-#             g.user_id = user.id
-#         except:
-#             g.user_id = None
-#     else:
-#         g.user_id = None
-
+# User signup/login
 
 @app.route('/api/signup', methods=["GET", "POST"])
 def signup():
@@ -133,14 +109,14 @@ def get_all_listings():
 def create_listing():
     """Add a listing."""
 
-    user = get_jwt_identity();
-    current_user = User.query.filter_by(username=user).one()
+    username = get_jwt_identity();
+    user = User.query.filter_by(username=username).one()
 
     name = request.form.get('name')
     price = request.form.get('price')
     details = request.form.get('details')
 
-    listing = Listing(user_id=current_user.id,
+    listing = Listing(user_id=user.id,
                       name=name,
                       price=float(price),
                       details=details)
@@ -177,13 +153,13 @@ def get_listing(listing_id):
 def book_listing(listing_id):
     """Book a listing."""
 
-    if not g.user_id:
-        return jsonify({"error": "Unauthorized"}), 401
+    username = get_jwt_identity();
+    user = User.query.filter_by(username=username).one()
 
     checkin_date = request.json.get('checkin_date')
     checkout_date = request.json.get('checkout_date')
 
-    booking = Booking(user_id=g.user_id,
+    booking = Booking(user_id=user.id,
                       listing_id=listing_id,
                       checkin_date=checkin_date,
                       checkout_date=checkout_date)
@@ -196,17 +172,18 @@ def book_listing(listing_id):
     return jsonify(booking=serialized)
 
 @app.post('/api/listings/<int:listing_id>/message')
+@jwt_required()
 def message_listing_owner(listing_id):
     """Message an owner about a listing."""
 
-    if not g.user_id:
-        return jsonify({"error": "Unauthorized"}), 401
+    username = get_jwt_identity();
+    user = User.query.filter_by(username=username).one()
 
     text = request.json.get('text')
     listing = Listing.query.get_or_404(listing_id)
 
     message = Message(to_user_id=listing.user_id,
-                      from_user_id=g.user_id,
+                      from_user_id=user.id,
                       text=text)
 
     db.session.add(message)
@@ -220,16 +197,16 @@ def message_listing_owner(listing_id):
 # Messages routes:
 
 @app.get('/api/messages')
+@jwt_required()
 def get_messages():
     """Add a message:
 
     Show form if GET. If valid, update message and redirect to user page.
     """
 
-    if not g.user_id:
-        return jsonify({"error": "Unauthorized"}), 401
+    username = get_jwt_identity();
+    user = User.query.filter_by(username=username).one()
 
-    user = User.query.get_or_404(g.user_id)
     sent = [Message.serialize(m) for m in user.messages_sent]
     recd = [Message.serialize(m) for m in user.messages_received]
 
@@ -237,19 +214,20 @@ def get_messages():
 
 
 @app.route('/api/messages/<int:user_id>', methods=["GET", "POST"])
+@jwt_required()
 def open_conversation(user_id):
     """Gets messages with one person.
 
     Return messages if GET, add new message if POST.
     """
 
-    if not g.user_id:
-        return jsonify({"error": "Unauthorized"}), 401
+    username = get_jwt_identity();
+    user = User.query.filter_by(username=username).one()
 
     if request.method == "GET":
         sent = Message.query.filter(Message.to_user_id==user_id,
-                                    Message.from_user_id==g.user_id).all()
-        recd = Message.query.filter(Message.to_user_id==g.user_id,
+                                    Message.from_user_id==user.id).all()
+        recd = Message.query.filter(Message.to_user_id==user.id,
                                     Message.from_user_id==user_id).all()
 
         sent = [Message.serialize(m) for m in sent]
@@ -260,7 +238,7 @@ def open_conversation(user_id):
     else:
         message = Message(
             to_user_id=user_id,
-            from_user_id=g.user_id,
+            from_user_id=user.id,
             text=request.json.get("text")
             )
         db.session.add(message)
