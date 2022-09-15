@@ -111,7 +111,7 @@ def create_listing():
 
     username = get_jwt_identity();
     user = User.query.filter_by(username=username).one()
-
+    breakpoint()
     name = request.form.get('name')
     price = request.form.get('price')
     details = request.form.get('details')
