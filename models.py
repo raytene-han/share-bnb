@@ -16,8 +16,7 @@ load_dotenv()
 bcrypt = Bcrypt()
 db = SQLAlchemy()
 
-DEFAULT_IMAGE_URL = "/static/images/default-pic.png"
-DEFAULT_HEADER_IMAGE_URL = "/static/images/warbler-hero.jpg"
+DEFAULT_IMAGE_URL = "https://share-bnb-rh.s3.amazonaws.com/DEFAULT_HOUSE.jpeg"
 BUCKET_NAME = os.environ['BUCKET_NAME']
 
 class Booking(db.Model):
@@ -64,11 +63,11 @@ class Booking(db.Model):
 
         return {
             "id": self.id,
-            "user_id": self.user_id,
-            "listing_id": self.listing_id,
-            "checkin_date": self.checkin_date,
-            "checkout_date": self.checkout_date,
-            "booking_date": self.booking_date,
+            "userId": self.user_id,
+            "listingId": self.listing_id,
+            "checkinDate": self.checkin_date,
+            "checkoutDate": self.checkout_date,
+            "bookingDate": self.booking_date,
         }
 
 
@@ -94,8 +93,9 @@ class Listing(db.Model):
         nullable=False
     )
 
-    photos = db.Column(
-        db.Text
+    photo = db.Column(
+        db.Text,
+        default=DEFAULT_IMAGE_URL
     )
 
     price = db.Column(
@@ -135,29 +135,14 @@ class Listing(db.Model):
             return False
         return f"https://{BUCKET_NAME}.s3.amazonaws.com/{file_name}"
 
-    # @classmethod
-    # def add_listing(cls, user_id, price, photo_url, details):
-    #     """Adds listing to database.
-    #     """
-
-    #     listing = Listing(
-    #         username=username,
-    #         email=email,
-    #         password=hashed_pwd,
-    #         first_name=firstName,
-    #         last_name=lastName
-    #     )
-
-    #     db.session.add(user)
-    #     return user
-
     def serialize(self):
         """Serialize listing to a dict of listing info."""
 
         return {
             "id": self.id,
-            "user_id": self.user_id,
-            "photos": self.photos,
+            "userId": self.user_id,
+            "name": self.name,
+            "photo": self.photo,
             "price": self.price,
             "details": self.details,
         }
@@ -200,8 +185,8 @@ class Message(db.Model):
 
         return {
             "id": self.id,
-            "to_user_id": self.to_user_id,
-            "from_user_id": self.from_user_id,
+            "toUserId": self.to_user_id,
+            "fromUserId": self.from_user_id,
             "text": self.text,
             "timestamp": self.timestamp,
         }
@@ -248,33 +233,6 @@ class User(db.Model):
 
     listings = db.relationship('Listing', backref="user")
 
-    # followers = db.relationship(
-    #     "User",
-    #     secondary="follows",
-    #     primaryjoin=(Follows.user_being_followed_id == id),
-    #     secondaryjoin=(Follows.user_following_id == id),
-    #     backref="following",
-    # )
-
-    # messages_received = db.relationship(
-    #     "Message",
-    #     primaryjoin=(Message.to_user_id == id),
-    #     backref="user"
-    # )
-
-    # messages_sent = db.relationship(
-    #     "Message",
-    #     primaryjoin=(Message.from_user_id == id),
-    #     backref="user",
-    # )
-    # messages_received = db.relationship(
-    #     "User",
-    #     secondary="messages",
-    #     primaryjoin=(Message.to_user_id == id),
-    #     secondaryjoin=(Message.from_user_id == id),
-    #     backref="messages_sent",
-    # )
-
     messages_received = db.relationship(
         "Message",
         foreign_keys=[Message.to_user_id]
@@ -284,13 +242,6 @@ class User(db.Model):
         "Message",
         foreign_keys=[Message.from_user_id]
     )
-    # messages_sent = db.relationship(
-    #     "Message",
-    #     join=(Message.from_user_id == id),
-    #     backref="users",
-    # )
-
-    # liked_messages = db.relationship('Message', secondary="likes")
 
     def __repr__(self):
         return f"<User #{self.id}: {self.username}, {self.email}>"
@@ -343,25 +294,9 @@ class User(db.Model):
             "id": self.id,
             "username": self.username,
             "email": self.email,
-            "first_name": self.first_name,
-            "last_name": self.last_name,
+            "firstName": self.first_name,
+            "lastName": self.last_name,
         }
-
-    # def is_followed_by(self, other_user):
-    #     """Is this user followed by `other_user`?"""
-
-    #     found_user_list = [
-    #         user for user in self.followers if user == other_user]
-    #     return len(found_user_list) == 1
-
-    # def is_following(self, other_user):
-    #     """Is this user following `other_use`?"""
-
-    #     found_user_list = [
-    #         user for user in self.following if user == other_user]
-    #     return len(found_user_list) == 1
-
-
 
 
 

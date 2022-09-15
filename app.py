@@ -4,25 +4,29 @@ import os
 from dotenv import load_dotenv
 
 from flask import (
-    Flask, render_template, request, flash, redirect, session, g, abort, jsonify
+    Flask, request, flash, redirect, session, g, abort, jsonify
 )
 from flask_debugtoolbar import DebugToolbarExtension
+from flask_cors import CORS
 from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
 
 from models import (
-    db, connect_db, User, Message, Listing, Booking, DEFAULT_IMAGE_URL,
-    DEFAULT_HEADER_IMAGE_URL, BUCKET_NAME)
+    db, connect_db, User, Message, Listing, Booking, BUCKET_NAME)
 
-import jwt
+# import jwt
 
-
+from flask_jwt_extended import create_access_token
+from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import jwt_required
+from flask_jwt_extended import JWTManager
 
 load_dotenv()
 
 CURR_USER_KEY = "curr_user"
 
 app = Flask(__name__)
+CORS(app)
 
 # Get DB_URI from environ variable (useful for production/testing) or,
 # if not set there, use development local db.
@@ -37,7 +41,7 @@ app.config['JWT_SECRET_KEY'] = os.environ['JWT_SECRET_KEY']
 toolbar = DebugToolbarExtension(app)
 
 connect_db(app)
-# jwt = JWTManager(app)
+jwt = JWTManager(app)
 
 SECRET_KEY = os.environ['SECRET_KEY']
 
@@ -47,37 +51,36 @@ SECRET_KEY = os.environ['SECRET_KEY']
 # User signup/login/logout
 
 
-@app.before_request
-def add_user_to_g():
-    """If we're logged in, add curr user to Flask global."""
-    # breakpoint()
-    if not request.headers.get('Content-Type'):
-        token = None
-    elif request.headers['Content-Type'] == 'application/json':
-        token = request.json.get("token", None)
-    else:
-        token = request.form.get("token", None)
+# @app.before_request
+# def add_user_to_g():
+#     """If token exists & decodes successfully, add curr user to Flask global."""
+#     breakpoint()
+#     if not request.headers.get('Content-Type'):
+#         token = None
+#     elif request.headers['Content-Type'] == 'application/json':
+#         token = request.json.get("token", None)
+#     else:
+#         token = request.form.get("token", None)
 
-    if token:
-        username = jwt.decode(token,SECRET_KEY,algorithms=["HS256"])['username']
-        user = User.query.filter_by(username=username).one()
+#     if token:
+#         try:
+#             username = jwt.decode(token,SECRET_KEY,algorithms=["HS256"])['username']
+#             user = User.query.filter_by(username=username).one()
 
-        g.user_id = user.id
-    else:
-        g.user_id = None
+#             g.user_id = user.id
+#         except:
+#             g.user_id = None
+#     else:
+#         g.user_id = None
 
 
 @app.route('/api/signup', methods=["GET", "POST"])
 def signup():
     """Handle user signup.
 
-    Create new user and add to DB. Redirect to home page.
-
-    If form not valid, present form.
-
-    If the there already is a user with that username: flash message
-    and re-present form.
+    Create new user and add to DB.
     """
+
     data = request.json
 
     user = User.signup(
@@ -87,27 +90,29 @@ def signup():
         firstName=data.get("first_name"),
         lastName=data.get("last_name"),
     )
+
+    db.session.add(user)
     db.session.commit()
 
-    serialized = User.serialize(user)
-    token = jwt.encode({"username":user.username},SECRET_KEY)
+    access_token = create_access_token(identity=user.username)
 
-    return jsonify({"token":token}),201
+    return jsonify(access_token=access_token), 201
 
 
 @app.route('/api/login', methods=["POST"])
 def login():
-    """Handle user login and return token"""
+    """Handle user login and return token."""
 
-    data = request.json
-    user = User.authenticate(data.get("username"), data.get("password"))
+    username = request.json.get("username", None)
+    password = request.json.get("password", None)
+    user = User.authenticate(username, password)
+
     if not user:
-        return jsonify({"error": "invalid credentials"}),401
+        return jsonify({"error": "invalid credentials"}),400
 
-    serialized = User.serialize(user)
-    token = jwt.encode({"username":user.username},SECRET_KEY)
+    access_token = create_access_token(identity=username)
 
-    return jsonify(token=token)
+    return jsonify(access_token=access_token)
 
 
 ##############################################################################
@@ -115,15 +120,8 @@ def login():
 
 @app.get('/api/listings')
 def get_all_listings():
-    """Add a listing:
-
-    1. check logged in to get user_id
-    2. validate data (price, details?, photo?)
-    3. if valid, then add to database
-        if photo, call Listing.upload
-        update listing with photo url
-    """
-
+    """See all listings."""
+    breakpoint()
     listings = Listing.query.all()
 
     serialized = [Listing.serialize(l) for l in listings]
@@ -132,23 +130,23 @@ def get_all_listings():
 
 
 @app.post('/api/listings')
+@jwt_required()
 def create_listing():
-    """Add a listing:
+    """Add a listing."""
 
-    1. check logged in to get user_id
-    2. validate data (price, details?, photo?)
-    3. if valid, then add to database
-        if photo, call Listing.upload
-        update listing with photo url
-    """
+    # if not g.user_id:
+    #     return jsonify({"error": "Unauthorized"}), 401
+    user = get_jwt_identity();
+    current_user = User.query.filter_by(username=user).one()
 
-    if not g.user_id:
-        return jsonify({"error": "Unauthorized"}), 401
-
+    name = request.form.get('name')
     price = request.form.get('price')
     details = request.form.get('details')
 
-    listing = Listing(user_id=g.user_id, price=float(price), details=details)
+    listing = Listing(user_id=current_user.id,
+                      name=name,
+                      price=float(price),
+                      details=details)
     db.session.add(listing)
     db.session.commit()
 
@@ -163,7 +161,7 @@ def create_listing():
     db.session.commit()
     serialized = Listing.serialize(listing)
 
-    return jsonify(listing=serialized)
+    return jsonify(listing=serialized), 201
 
 
 
@@ -178,6 +176,7 @@ def get_listing(listing_id):
 
 
 @app.post('/api/listings/<int:listing_id>/book')
+@jwt_required()
 def book_listing(listing_id):
     """Book a listing."""
 
@@ -287,10 +286,10 @@ def page_not_found(e):
     return jsonify({"error": "Page not found."}), 404
 
 
-@app.after_request
-def add_header(response):
-    """Add non-caching headers on every request."""
+# @app.after_request
+# def add_header(response):
+#     """Add non-caching headers on every request."""
 
-    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control
-    response.cache_control.no_store = True
-    return response
+#     # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control
+#     response.cache_control.no_store = True
+#     return response
