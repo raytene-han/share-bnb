@@ -96,7 +96,7 @@ def signup():
 
     access_token = create_access_token(identity=user.username)
 
-    return jsonify(access_token=access_token), 201
+    return jsonify(token=access_token), 201
 
 
 @app.route('/api/login', methods=["POST"])
@@ -112,7 +112,7 @@ def login():
 
     access_token = create_access_token(identity=username)
 
-    return jsonify(access_token=access_token)
+    return jsonify(token=access_token)
 
 
 ##############################################################################
@@ -134,8 +134,6 @@ def get_all_listings():
 def create_listing():
     """Add a listing."""
 
-    # if not g.user_id:
-    #     return jsonify({"error": "Unauthorized"}), 401
     user = get_jwt_identity();
     current_user = User.query.filter_by(username=user).one()
 
