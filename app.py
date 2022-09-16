@@ -63,8 +63,8 @@ def signup():
         username=data.get("username"),
         password=data.get("password"),
         email=data.get("email"),
-        firstName=data.get("first_name"),
-        lastName=data.get("last_name"),
+        firstName=data.get("firstName"),
+        lastName=data.get("lastName"),
     )
 
     db.session.add(user)
@@ -99,7 +99,7 @@ def get_user(username):
         serialized = User.serialize(user)
         return jsonify(user=serialized)
 
-    
+
     return jsonify({"error": "invalid user"}),400
 
 
@@ -109,7 +109,12 @@ def get_user(username):
 @app.get('/api/listings')
 def get_all_listings():
     """See all listings."""
-    listings = Listing.query.all()
+
+    try:
+        name = request.args["name"]
+        listings = Listing.query.filter(Listing.name.ilike(f"%{name}%")).all()
+    except:
+        listings = Listing.query.all()
 
     serialized = [Listing.serialize(l) for l in listings]
 
@@ -123,7 +128,7 @@ def create_listing():
 
     username = get_jwt_identity()
     user = User.query.filter_by(username=username).one()
-    
+
     name = request.form.get('name')
     price = request.form.get('price')
     details = request.form.get('details')
@@ -147,7 +152,7 @@ def create_listing():
 
     db.session.commit()
     serialized = Listing.serialize(listing)
-    
+
     return jsonify(listing=serialized), 201
 
 
@@ -183,7 +188,7 @@ def book_listing(listing_id):
 
     serialized = Booking.serialize(booking)
 
-    return jsonify(booking=serialized)
+    return jsonify(booking=serialized), 201
 
 @app.post('/api/listings/<int:listing_id>/message')
 @jwt_required()
@@ -205,7 +210,7 @@ def message_listing_owner(listing_id):
 
     serialized = Message.serialize(message)
 
-    return jsonify(message=serialized)
+    return jsonify(message=serialized), 201
 
 ##############################################################################
 # Messages routes:
@@ -220,7 +225,9 @@ def get_messages():
 
     username = get_jwt_identity();
     user = User.query.filter_by(username=username).one()
-
+    messages = (Message.query.filter(Message.to_user_id==user.id)
+                .order_by(Message.from_user_id).all())
+    breakpoint()
     sent = [Message.serialize(m) for m in user.messages_sent]
     recd = [Message.serialize(m) for m in user.messages_received]
 
