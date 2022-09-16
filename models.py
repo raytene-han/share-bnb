@@ -190,8 +190,7 @@ class Message(db.Model):
             "text": self.text,
             "timestamp": self.timestamp,
         }
-
-
+        
 
 class User(db.Model):
     """User in the system."""

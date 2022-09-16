@@ -20,6 +20,7 @@ from flask_jwt_extended import create_access_token
 from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import JWTManager
+from sqlalchemy import func, or_
 
 load_dotenv()
 
@@ -37,6 +38,7 @@ app.config['SQLALCHEMY_ECHO'] = False
 app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = True
 app.config['SECRET_KEY'] = os.environ['SECRET_KEY']
 app.config['JWT_SECRET_KEY'] = os.environ['JWT_SECRET_KEY']
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False
 
 toolbar = DebugToolbarExtension(app)
 
@@ -223,15 +225,23 @@ def get_messages():
     Show form if GET. If valid, update message and redirect to user page.
     """
 
-    username = get_jwt_identity();
+    username = get_jwt_identity()
     user = User.query.filter_by(username=username).one()
-    messages = (Message.query.filter(Message.to_user_id==user.id)
-                .order_by(Message.from_user_id).all())
-    breakpoint()
+    # messages = (Message.query.filter(Message.to_user_id==user.id)
+    #             .order_by(Message.from_user_id).all())
+    # breakpoint()
     sent = [Message.serialize(m) for m in user.messages_sent]
     recd = [Message.serialize(m) for m in user.messages_received]
 
-    return jsonify({"sent": sent, "received": recd})
+    conversations = Message.query.with_entities(
+        Message.from_user_id, User.username)\
+            .filter(Message.from_user_id != user.id)\
+            .group_by(Message.from_user_id,User.username)\
+            .join(User,User.id == Message.from_user_id)\
+            .all()
+    serialized = [{"id":c[0],"username":c[1]} for c in conversations]
+
+    return jsonify(conversations=serialized)
 
 
 @app.route('/api/messages/<int:user_id>', methods=["GET", "POST"])
@@ -242,19 +252,20 @@ def open_conversation(user_id):
     Return messages if GET, add new message if POST.
     """
 
-    username = get_jwt_identity();
+    username = get_jwt_identity()
     user = User.query.filter_by(username=username).one()
 
     if request.method == "GET":
-        sent = Message.query.filter(Message.to_user_id==user_id,
-                                    Message.from_user_id==user.id).all()
-        recd = Message.query.filter(Message.to_user_id==user.id,
-                                    Message.from_user_id==user_id).all()
-
-        sent = [Message.serialize(m) for m in sent]
-        recd = [Message.serialize(m) for m in recd]
-
-        return jsonify({"sent": sent, "received": recd})
+        messages = Message.query.filter(((Message.to_user_id==user_id) &
+                                        (Message.from_user_id==user.id)) |
+                                        ((Message.to_user_id==user.id) &
+                                        (Message.from_user_id==user_id)))\
+                                        .order_by(Message.id)\
+                                        .all()
+       
+        serialized = [Message.serialize(m) for m in messages]
+        
+        return jsonify(messages=serialized)
 
     else:
         message = Message(
