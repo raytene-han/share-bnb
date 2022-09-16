@@ -246,18 +246,20 @@ def get_messages():
 
     username = get_jwt_identity()
     user = User.query.filter_by(username=username).one()
-    # messages = (Message.query.filter(Message.to_user_id==user.id)
-    #             .order_by(Message.from_user_id).all())
-    # breakpoint()
-    sent = [Message.serialize(m) for m in user.messages_sent]
-    recd = [Message.serialize(m) for m in user.messages_received]
 
-    conversations = Message.query.with_entities(
+    recd = Message.query.with_entities(
         Message.from_user_id, User.username)\
-            .filter(Message.from_user_id != user.id)\
+            .filter((Message.from_user_id != user.id) & (Message.to_user_id == user.id))\
             .group_by(Message.from_user_id,User.username)\
             .join(User,User.id == Message.from_user_id)\
             .all()
+    sent = Message.query.with_entities(
+        Message.to_user_id, User.username)\
+            .filter((Message.to_user_id != user.id) & (Message.from_user_id == user.id))\
+            .group_by(Message.to_user_id,User.username)\
+            .join(User,User.id == Message.to_user_id)\
+            .all()
+    conversations = {*recd,*sent}
     serialized = [{"id":c[0],"username":c[1]} for c in conversations]
 
     return jsonify(conversations=serialized)
