@@ -16,7 +16,7 @@ load_dotenv()
 bcrypt = Bcrypt()
 db = SQLAlchemy()
 
-DEFAULT_IMAGE_URL = "https://share-bnb-rh.s3.amazonaws.com/DEFAULT_HOUSE.jpeg"
+DEFAULT_IMAGE_URL = "https://share-bnb-rh.s3.amazonaws.com/DEFAULT_YARD.jpeg"
 BUCKET_NAME = os.environ['BUCKET_NAME']
 
 class Booking(db.Model):
@@ -190,7 +190,7 @@ class Message(db.Model):
             "text": self.text,
             "timestamp": self.timestamp,
         }
-        
+
 
 class User(db.Model):
     """User in the system."""
@@ -231,6 +231,8 @@ class User(db.Model):
     )
 
     listings = db.relationship('Listing', backref="user")
+
+    bookings = db.relationship('Booking', backref="user")
 
     messages_received = db.relationship(
         "Message",
@@ -294,7 +296,7 @@ class User(db.Model):
             "username": self.username,
             "email": self.email,
             "firstName": self.first_name,
-            "lastName": self.last_name,
+            "lastName": self.last_name
         }
 
 

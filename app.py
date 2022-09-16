@@ -96,13 +96,32 @@ def login():
 @jwt_required()
 def get_user(username):
     """Return user object as json"""
-    if username == get_jwt_identity():
-        user = User.query.filter_by(username=username).one()
-        serialized = User.serialize(user)
-        return jsonify(user=serialized)
+
+    user = User.query.filter_by(username=username).one()
+    serialized = User.serialize(user)
+
+    return jsonify(user=serialized)
+
+@app.route('/api/users/<username>/bookings', methods=["GET"])
+@jwt_required()
+def get_user_bookings(username):
+    """Return user's bookings as json"""
+
+    user = User.query.filter_by(username=username).one()
 
 
-    return jsonify({"error": "invalid user"}),400
+    bookings = Booking.query.with_entities(
+            Booking.checkin_date, Booking.checkout_date,
+            Listing.name, Listing.id)\
+            .filter_by(user_id=user.id)\
+            .join(Listing,Listing.id==Booking.listing_id)
+
+    serialized = [{"name": b[2],
+                   "checkIn": b[0],
+                   "checkOut": b[1],
+                   "listingId": b[3]}
+                   for b in bookings]
+    return jsonify(bookings=serialized)
 
 
 ##############################################################################
@@ -262,9 +281,9 @@ def open_conversation(user_id):
                                         (Message.from_user_id==user_id)))\
                                         .order_by(Message.id)\
                                         .all()
-       
+
         serialized = [Message.serialize(m) for m in messages]
-        
+
         return jsonify(messages=serialized)
 
     else:
