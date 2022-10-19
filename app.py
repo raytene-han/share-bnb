@@ -1,5 +1,3 @@
-# flask_jwt_extended.get_jwt_identity()
-
 import os
 from dotenv import load_dotenv
 
@@ -13,8 +11,6 @@ from werkzeug.utils import secure_filename
 
 from models import (
     db, connect_db, User, Message, Listing, Booking, BUCKET_NAME)
-
-# import jwt
 
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import get_jwt_identity
@@ -92,23 +88,24 @@ def login():
 
     return jsonify(token=access_token)
 
+
 @app.route('/api/users/<username>', methods=["GET"])
 @jwt_required()
 def get_user(username):
-    """Return user object as json"""
+    """Return user object as json."""
 
     user = User.query.filter_by(username=username).one()
     serialized = User.serialize(user)
 
     return jsonify(user=serialized)
 
+
 @app.route('/api/users/<username>/bookings', methods=["GET"])
 @jwt_required()
 def get_user_bookings(username):
-    """Return user's bookings as json"""
+    """Return user's bookings as json."""
 
     user = User.query.filter_by(username=username).one()
-
 
     bookings = Booking.query.with_entities(
             Booking.checkin_date, Booking.checkout_date,
@@ -129,7 +126,7 @@ def get_user_bookings(username):
 
 @app.get('/api/listings')
 def get_all_listings():
-    """See all listings."""
+    """Return all listings as JSON."""
 
     try:
         name = request.args["name"]
@@ -145,7 +142,7 @@ def get_all_listings():
 @app.post('/api/listings')
 @jwt_required()
 def create_listing():
-    """Add a listing."""
+    """Add a listing and returns listing details as JSON."""
 
     username = get_jwt_identity()
     user = User.query.filter_by(username=username).one()
@@ -175,7 +172,6 @@ def create_listing():
     serialized = Listing.serialize(listing)
 
     return jsonify(listing=serialized), 201
-
 
 
 @app.get('/api/listings/<int:listing_id>')
@@ -211,6 +207,7 @@ def book_listing(listing_id):
 
     return jsonify(booking=serialized), 201
 
+
 @app.post('/api/listings/<int:listing_id>/message')
 @jwt_required()
 def message_listing_owner(listing_id):
@@ -239,10 +236,7 @@ def message_listing_owner(listing_id):
 @app.get('/api/messages')
 @jwt_required()
 def get_messages():
-    """Add a message:
-
-    Show form if GET. If valid, update message and redirect to user page.
-    """
+    """Gets all messages a user has sent and received."""
 
     username = get_jwt_identity()
     user = User.query.filter_by(username=username).one()
@@ -253,13 +247,16 @@ def get_messages():
             .group_by(Message.from_user_id,User.username)\
             .join(User,User.id == Message.from_user_id)\
             .all()
+
     sent = Message.query.with_entities(
         Message.to_user_id, User.username)\
             .filter((Message.to_user_id != user.id) & (Message.from_user_id == user.id))\
             .group_by(Message.to_user_id,User.username)\
             .join(User,User.id == Message.to_user_id)\
             .all()
+
     conversations = {*recd,*sent}
+
     serialized = [{"id":c[0],"username":c[1]} for c in conversations]
 
     return jsonify(conversations=serialized)
@@ -304,8 +301,6 @@ def open_conversation(user_id):
 
 ##############################################################################
 # Homepage and error pages
-
-
 
 @app.errorhandler(404)
 def page_not_found(e):
