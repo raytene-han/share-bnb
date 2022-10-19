@@ -1,4 +1,4 @@
-"""SQLAlchemy models for Warbler."""
+"""SQLAlchemy models for ShareBnb."""
 
 from datetime import datetime
 
@@ -146,6 +146,7 @@ class Listing(db.Model):
             "price": self.price,
             "details": self.details,
         }
+
 
 class Message(db.Model):
     """A message to another user."""
