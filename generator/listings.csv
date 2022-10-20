@@ -1,7 +1,27 @@
-user_id,name,photos,price,details
-79,Desert Oasis,null,200,rustic and cute
-8,Schrute Farms,null,1200,beets
-62,Heaven's Door: Pioneertown,null,805,heaven
-16,Oak Tree A-Frame,null,345,in a tree
-84,Luxe Lake Arrowhead Getaway w/ Treetop Views!,null,900,by the lake
-51,Minimalist Modern Cabin,null,470,modern and minimal
+user_id,name,photo,price,details
+79,Desert Oasis,https://share-bnb-rh.s3.amazonaws.com/1.jpg,200,rustic and cute
+8,Schrute Farms,https://share-bnb-rh.s3.amazonaws.com/3.jpg,1200,beets
+62,Heaven's Door: Pioneertown,https://share-bnb-rh.s3.amazonaws.com/2.jpg,805,heaven
+16,Oak Tree A-Frame,https://share-bnb-rh.s3.amazonaws.com/4.jpg,345,in a tree
+84,Luxe Lake Arrowhead Getaway w/ Treetop Views!,https://share-bnb-rh.s3.amazonaws.com/5.jpg,900,by the lake
+51,Minimalist Modern Cabin,https://share-bnb-rh.s3.amazonaws.com/6.jpg,470,modern and minimal
+45,"Crystal Cabin, Restored Vintage Lodge",https://share-bnb-rh.s3.amazonaws.com/7.jpg,335,a cabin that has been restored
+12,Private Luxury Cabin,https://share-bnb-rh.s3.amazonaws.com/8.jpg,810,"super private, super luxury"
+19,Picturesque Lodge,https://share-bnb-rh.s3.amazonaws.com/9.jpg,780,very picturesque indeed
+125,River Cabin with Hot Tub,https://share-bnb-rh.s3.amazonaws.com/10.jpg,125,it has a hot tub!
+190,Fairplay Cabin w/ Spacious Deck,https://share-bnb-rh.s3.amazonaws.com/11.jpg,290,wow what a spacious deck
+221,Lux Wilderness Ranch Home,https://share-bnb-rh.s3.amazonaws.com/12.jpg,450,lux. wild. ranch.
+219,Tiny Home on a Mountain,https://share-bnb-rh.s3.amazonaws.com/13.jpg,525,"it's a tiny home, on a mountain"
+219,Hilltop cabin retreat with lake & mountain views,https://share-bnb-rh.s3.amazonaws.com/14.jpg,180,cabin on hill with great views
+90,Exclusive cabin,https://share-bnb-rh.s3.amazonaws.com/15.jpg,630,super exclusive cabin
+90,The Canyon Bobcat,https://share-bnb-rh.s3.amazonaws.com/16.jpg,375,named after bobcats
+37,Raspberry Hot Spring,https://share-bnb-rh.s3.amazonaws.com/17.jpg,559,we have raspberries
+16,Carroll Lodge by the Falls,https://share-bnb-rh.s3.amazonaws.com/18.jpg,340,near the falls
+99,"""Little Dipper""",https://share-bnb-rh.s3.amazonaws.com/19.jpg,780,lots of constellations
+216,Mountaintop Getaway,https://share-bnb-rh.s3.amazonaws.com/20.jpg,120,get away from the mountains
+288,The Juniper House,https://share-bnb-rh.s3.amazonaws.com/21.jpg,485,really cute house
+299,Somewhere In Time,https://share-bnb-rh.s3.amazonaws.com/22.jpg,699,back in time?
+109,Breathtaking Lake View Remodeled Cabin,https://share-bnb-rh.s3.amazonaws.com/23.jpg,415,wow. breathtaking.
+176,Mountains To Deserts,https://share-bnb-rh.s3.amazonaws.com/24.jpg,715,from mountains to deserts
+176,Hidden Pines Cabin,https://share-bnb-rh.s3.amazonaws.com/25.jpg,899,cabin hidden in pines
+88,Modern Cabin on Private Fishing Pond,https://share-bnb-rh.s3.amazonaws.com/26.jpg,100,private fishing party
