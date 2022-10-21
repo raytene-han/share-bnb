@@ -16,8 +16,8 @@ load_dotenv()
 bcrypt = Bcrypt()
 db = SQLAlchemy()
 
-DEFAULT_IMAGE_URL = "https://share-bnb-rh.s3.amazonaws.com/DEFAULT_YARD.jpeg"
-BUCKET_NAME = os.environ['BUCKET_NAME']
+AWS_BUCKET_NAME = os.environ['AWS_BUCKET_NAME']
+DEFAULT_IMAGE_URL = f"https://{AWS_BUCKET_NAME}.s3.amazonaws.com/DEFAULT_YARD.jpeg"
 
 class Booking(db.Model):
     """Connection of a user & listing -> booking."""
@@ -122,10 +122,14 @@ class Listing(db.Model):
             object_name = os.path.basename(file_name)
 
         # Upload the file
-        s3_client = boto3.client('s3')
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=os.environ['AWS_ACCESS_KEY'],
+            aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY']
+        )
         try:
             response = s3_client.upload_file(f"uploads/{file_name}",
-                                            BUCKET_NAME,
+                                            AWS_BUCKET_NAME,
                                             object_name,
                                             ExtraArgs={
                                                 "ContentType": mimetype
@@ -133,7 +137,7 @@ class Listing(db.Model):
         except ClientError as e:
             logging.error(e)
             return False
-        return f"https://{BUCKET_NAME}.s3.amazonaws.com/{file_name}"
+        return f"https://{AWS_BUCKET_NAME}.s3.amazonaws.com/{file_name}"
 
     def serialize(self):
         """Serialize listing to a dict of listing info."""

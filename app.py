@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
 
 from models import (
-    db, connect_db, User, Message, Listing, Booking, BUCKET_NAME)
+    db, connect_db, User, Message, Listing, Booking)
 
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import get_jwt_identity
@@ -34,6 +34,8 @@ app.config['SQLALCHEMY_ECHO'] = False
 app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = True
 app.config['SECRET_KEY'] = os.environ['SECRET_KEY']
 app.config['JWT_SECRET_KEY'] = os.environ['JWT_SECRET_KEY']
+app.config['AWS_ACCESS_KEY'] = os.environ['AWS_ACCESS_KEY']
+app.config['AWS_SECRET_ACCESS_KEY'] = os.environ['AWS_SECRET_ACCESS_KEY']
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False
 
 toolbar = DebugToolbarExtension(app)
